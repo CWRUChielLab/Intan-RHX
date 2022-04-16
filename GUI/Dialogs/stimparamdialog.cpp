@@ -576,6 +576,14 @@ void StimParamDialog::updateFromState()
 
 void StimParamDialog::accept()
 {
+    if (calculateActualSinglePulseDuration() > maxPulseDuration) {
+        QMessageBox::warning(this, tr("Single pulse duration is too long"),
+                                   tr("The single pulse duration exceeds hardware limitations. "
+                                      "You must reduce the duration before you can save these settings."),
+                                   QMessageBox::Ok);
+        return;
+    }
+
     // Save the values of the parameters from the dialog box into the object.
     parameters->stimShape->setIndex(stimShapeComboBox->currentIndex());
     parameters->stimPolarity->setIndex(stimPolarityComboBox->currentIndex());
