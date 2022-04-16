@@ -126,6 +126,8 @@ private:
     double timestep;
     double currentstep;
 
+    double calculateWaveformDuration();
+
 private slots:
     void enableWidgets();
     void calculateCharge();

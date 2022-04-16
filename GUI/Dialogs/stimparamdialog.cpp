@@ -773,15 +773,21 @@ void StimParamDialog::constrainRefractoryPeriod()
 // Private slot that constrains pulseTrainPeriod's lowest possible value to the sum of the durations of active phases.
 void StimParamDialog::constrainPulseTrainPeriod()
 {
-    double minimum;
+    pulseTrainPeriodSpinBox->setTrueMinimum(calculateWaveformDuration());
+}
+
+// Private method for calculating the total duration of the waveform.
+double StimParamDialog::calculateWaveformDuration()
+{
+    double waveformDuration;
     if (stimShapeComboBox->currentIndex() == Biphasic) {
-        minimum = firstPhaseDurationSpinBox->getTrueValue() + secondPhaseDurationSpinBox->getTrueValue();
+        waveformDuration = firstPhaseDurationSpinBox->getTrueValue() + secondPhaseDurationSpinBox->getTrueValue();
     } else if (stimShapeComboBox->currentIndex() == BiphasicWithInterphaseDelay) {
-        minimum = firstPhaseDurationSpinBox->getTrueValue() + secondPhaseDurationSpinBox->getTrueValue() + interphaseDelaySpinBox->getTrueValue();
+        waveformDuration = firstPhaseDurationSpinBox->getTrueValue() + secondPhaseDurationSpinBox->getTrueValue() + interphaseDelaySpinBox->getTrueValue();
     } else {
-        minimum = (2.0 * firstPhaseDurationSpinBox->getTrueValue()) + secondPhaseDurationSpinBox->getTrueValue();
+        waveformDuration = (2.0 * firstPhaseDurationSpinBox->getTrueValue()) + secondPhaseDurationSpinBox->getTrueValue();
     }
-    pulseTrainPeriodSpinBox->setTrueMinimum(minimum);
+    return waveformDuration;
 }
 
 void StimParamDialog::roundTimeInputs()
