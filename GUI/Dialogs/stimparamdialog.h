@@ -125,6 +125,7 @@ private:
 
     double timestep;
     double currentstep;
+    double maxPulseDuration;
 
     double calculateWaveformDuration();
 

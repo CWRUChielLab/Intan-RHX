@@ -41,6 +41,9 @@ StimParamDialog::StimParamDialog(SystemState* state_, Channel* channel_, QWidget
     timestep = 1.0e6 / state->sampleRate->getNumericValue();  // time step in microseconds
     currentstep = RHXRegisters::stimStepSizeToDouble(state->getStimStepSizeEnum()) * 1.0e6;  // current step in microamps
 
+    // Maximum duration of a single pulse is hardware limited to timestep * (2^16 - 1).
+    maxPulseDuration = timestep * 65535;
+
     stimFigure = new StimFigure(parameters, this);
 
     QGroupBox* stimWaveFormGroupBox = new QGroupBox(tr("Stimulation Waveform"), this);
@@ -59,12 +62,12 @@ StimParamDialog::StimParamDialog(SystemState* state_, Channel* channel_, QWidget
 
     firstPhaseDurationLabel = new QLabel(tr("First Phase Duration (D1):"), this);
     firstPhaseDurationSpinBox = new TimeSpinBox(timestep, this);
-    firstPhaseDurationSpinBox->setRange(0, 5000);
+    firstPhaseDurationSpinBox->setRange(0, maxPulseDuration);
     connect(qApp, SIGNAL(focusChanged(QWidget*,QWidget*)), this, SLOT(notifyFocusChanged(QWidget*,QWidget*)));
 
     secondPhaseDurationLabel = new QLabel(tr("Second Phase Duration (D2):"), this);
     secondPhaseDurationSpinBox = new TimeSpinBox(timestep, this);
-    secondPhaseDurationSpinBox->setRange(0, 5000);
+    secondPhaseDurationSpinBox->setRange(0, maxPulseDuration);
 
     interphaseDelayLabel = new QLabel(tr("Interphase Delay (DP):"), this);
     interphaseDelaySpinBox = new TimeSpinBox(timestep, this);
