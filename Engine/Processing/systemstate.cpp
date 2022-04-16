@@ -465,6 +465,9 @@ SystemState::SystemState(const AbstractRHXController* controller_, StimStepSize 
     tScale->addItem("1000", "1000 ms", 1000.0);
     tScale->addItem("2000", "2000 ms", 2000.0);
     tScale->addItem("4000", "4000 ms", 4000.0);
+    tScale->addItem("10000", "10000 ms", 10000.0);
+    tScale->addItem("20000", "20000 ms", 20000.0);
+    tScale->addItem("40000", "40000 ms", 40000.0);
     tScale->setValue("2000");
 
     yScaleWide = new DiscreteItemList("WideScaleMicroVolts", globalItems, this);

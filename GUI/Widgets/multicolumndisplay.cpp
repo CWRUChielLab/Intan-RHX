@@ -44,15 +44,19 @@ MultiColumnDisplay::MultiColumnDisplay(ControllerInterface* controllerInterface_
     setLayout(mainLayout);
 
     numRefreshZones.resize(state->tScale->numberOfItems());
-    numRefreshZones[0] = 1;
-    numRefreshZones[1] = 1;
-    numRefreshZones[2] = 1;
-    numRefreshZones[3] = 4;
-    numRefreshZones[4] = 8;
-    numRefreshZones[5] = 16;
-    numRefreshZones[6] = 20;
-    numRefreshZones[7] = 40;
-    numRefreshZones[8] = 80;    // This index should equal state->tScale->numberOfItems() - 1.
+    numRefreshZones[0] = 1;     // 10 ms scale    -> 10 ms refresh
+    numRefreshZones[1] = 1;     // 20 ms scale    -> 20 ms refresh
+    numRefreshZones[2] = 1;     // 40 ms scale    -> 40 ms refresh
+    numRefreshZones[3] = 4;     // 100 ms scale   -> 25 ms refresh
+    numRefreshZones[4] = 8;     // 200 ms scale   -> 25 ms refresh
+    numRefreshZones[5] = 16;    // 400 ms scale   -> 25 ms refresh
+    numRefreshZones[6] = 20;    // 1000 ms scale  -> 50 ms refresh
+    numRefreshZones[7] = 40;    // 2000 ms scale  -> 50 ms refresh
+    numRefreshZones[8] = 80;    // 4000 ms scale  -> 50 ms refresh
+    numRefreshZones[9] = 100;   // 10000 ms scale -> 100 ms refresh
+    numRefreshZones[10] = 200;  // 20000 ms scale -> 100 ms refresh
+    numRefreshZones[11] = 200;  // 40000 ms scale -> 200 ms refresh
+    // Final index should equal state->tScale->numberOfItems() - 1.
 
     state->writeToLog("About to create WaveformDisplayManager");
     waveformManager = new WaveformDisplayManager(state, 100, numRefreshZones[state->tScale->getIndex()]);
