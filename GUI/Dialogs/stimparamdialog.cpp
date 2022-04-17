@@ -41,6 +41,9 @@ StimParamDialog::StimParamDialog(SystemState* state_, Channel* channel_, QWidget
     timestep = 1.0e6 / state->sampleRate->getNumericValue();  // time step in microseconds
     currentstep = RHXRegisters::stimStepSizeToDouble(state->getStimStepSizeEnum()) * 1.0e6;  // current step in microamps
 
+    // Maximum duration of a single pulse is hardware limited to timestep * (2^16 - 1).
+    maxPulseDuration = timestep * 65535;
+
     stimFigure = new StimFigure(parameters, this);
 
     QGroupBox* stimWaveFormGroupBox = new QGroupBox(tr("Stimulation Waveform"), this);
@@ -59,12 +62,12 @@ StimParamDialog::StimParamDialog(SystemState* state_, Channel* channel_, QWidget
 
     firstPhaseDurationLabel = new QLabel(tr("First Phase Duration (D1):"), this);
     firstPhaseDurationSpinBox = new TimeSpinBox(timestep, this);
-    firstPhaseDurationSpinBox->setRange(0, 5000);
+    firstPhaseDurationSpinBox->setRange(0, maxPulseDuration);
     connect(qApp, SIGNAL(focusChanged(QWidget*,QWidget*)), this, SLOT(notifyFocusChanged(QWidget*,QWidget*)));
 
     secondPhaseDurationLabel = new QLabel(tr("Second Phase Duration (D2):"), this);
     secondPhaseDurationSpinBox = new TimeSpinBox(timestep, this);
-    secondPhaseDurationSpinBox->setRange(0, 5000);
+    secondPhaseDurationSpinBox->setRange(0, maxPulseDuration);
 
     interphaseDelayLabel = new QLabel(tr("Interphase Delay (DP):"), this);
     interphaseDelaySpinBox = new TimeSpinBox(timestep, this);
@@ -140,6 +143,12 @@ StimParamDialog::StimParamDialog(SystemState* state_, Channel* channel_, QWidget
     refractoryPeriodSpinBox = new TimeSpinBox(timestep, this);
     refractoryPeriodSpinBox->setRange(0, 1000000);
 
+    // Create Single Pulse Duration widgets.
+    singlePulseDurationGroupBox = new QGroupBox(tr("Single Pulse Duration"));
+    singlePulseDurationGroupBox->setToolTip(tr("Max = 65535 * time step\nActual = delay + waveform duration + refractory period"));
+    maxSinglePulseDurationLabel = new QLabel(tr("Maximum single pulse duration: ") + QString::number(maxPulseDuration / 1000) + " ms");
+    actualSinglePulseDurationLabel = new QLabel(tr("Pulse Duration Placeholder"));
+
     // Create Amp Settle widgets.
     QGroupBox* ampSettleGroupBox = new QGroupBox(tr("Amp Settle"), this);
 
@@ -209,6 +218,13 @@ StimParamDialog::StimParamDialog(SystemState* state_, Channel* channel_, QWidget
     connect(firstPhaseAmplitudeSpinBox, SIGNAL(editingFinished()), this, SLOT(roundCurrentInputs()));
     connect(secondPhaseAmplitudeSpinBox, SIGNAL(editingFinished()), this, SLOT(roundCurrentInputs()));
     connect(enableStimCheckBox, SIGNAL(toggled(bool)), stimFigure, SLOT(highlightStimTrace(bool)));
+
+    connect(stimShapeComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(updateActualSinglePulseDuration()));
+    connect(firstPhaseDurationSpinBox, SIGNAL(valueChanged(double)), this, SLOT(updateActualSinglePulseDuration()));
+    connect(secondPhaseDurationSpinBox, SIGNAL(valueChanged(double)), this, SLOT(updateActualSinglePulseDuration()));
+    connect(interphaseDelaySpinBox, SIGNAL(valueChanged(double)), this, SLOT(updateActualSinglePulseDuration()));
+    connect(postTriggerDelaySpinBox, SIGNAL(valueChanged(double)), this, SLOT(updateActualSinglePulseDuration()));
+    connect(refractoryPeriodSpinBox, SIGNAL(valueChanged(double)), this, SLOT(updateActualSinglePulseDuration()));
 
     // Connect signals to stimFigure's non-highlight slots.
     connect(stimShapeComboBox, SIGNAL(currentIndexChanged(int)), stimFigure, SLOT(updateStimShape(int)));
@@ -387,6 +403,12 @@ StimParamDialog::StimParamDialog(SystemState* state_, Channel* channel_, QWidget
     pulseTrainLayout->addLayout(refractoryPeriodRow);
     pulseTrainGroupBox->setLayout(pulseTrainLayout);
 
+    // Single pulse duration widgets' layout
+    QVBoxLayout *singlePulseDurationLayout = new QVBoxLayout;
+    singlePulseDurationLayout->addWidget(maxSinglePulseDurationLabel);
+    singlePulseDurationLayout->addWidget(actualSinglePulseDurationLabel);
+    singlePulseDurationGroupBox->setLayout(singlePulseDurationLayout);
+
     // Amp Settle widgets' layout
     QHBoxLayout *preStimAmpSettleRow = new QHBoxLayout;
     preStimAmpSettleRow->addWidget(preStimAmpSettleLabel);
@@ -434,6 +456,7 @@ StimParamDialog::StimParamDialog(SystemState* state_, Channel* channel_, QWidget
     QVBoxLayout *firstColumn = new QVBoxLayout;
     firstColumn->addWidget(triggerGroupBox);
     firstColumn->addWidget(pulseTrainGroupBox);
+    firstColumn->addWidget(singlePulseDurationGroupBox);
     firstColumn->addStretch();
 
     QVBoxLayout *secondColumn = new QVBoxLayout;
@@ -533,6 +556,9 @@ void StimParamDialog::updateParametersFromState(StimParameters *parameters)
     // Calculate frequency and charge so that the first labels that are displayed correspond to the loaded parameters.
     calculatePulseTrainFrequency();
     calculateCharge();
+
+    // Calculate actual single pulse duration from other parameters and display the value in its label.
+    updateActualSinglePulseDuration();
 }
 
 void StimParamDialog::activate()
@@ -550,6 +576,14 @@ void StimParamDialog::updateFromState()
 
 void StimParamDialog::accept()
 {
+    if (calculateActualSinglePulseDuration() > maxPulseDuration) {
+        QMessageBox::warning(this, tr("Single pulse duration is too long"),
+                                   tr("The single pulse duration exceeds hardware limitations. "
+                                      "You must reduce the duration before you can save these settings."),
+                                   QMessageBox::Ok);
+        return;
+    }
+
     // Save the values of the parameters from the dialog box into the object.
     parameters->stimShape->setIndex(stimShapeComboBox->currentIndex());
     parameters->stimPolarity->setIndex(stimPolarityComboBox->currentIndex());
@@ -668,6 +702,9 @@ void StimParamDialog::enableWidgets()
     postStimChargeRecovOffLabel->setEnabled(enableStimCheckBox->isChecked() && enableChargeRecoveryCheckBox->isChecked());
     postStimChargeRecovOffSpinBox->setEnabled(enableStimCheckBox->isChecked() && enableChargeRecoveryCheckBox->isChecked());
 
+    // Single Pulse Period
+    singlePulseDurationGroupBox->setEnabled(enableStimCheckBox->isChecked());
+
     // Reset Text for First Phase Labels
     if (stimShapeComboBox->currentIndex() == Biphasic || stimShapeComboBox->currentIndex() == BiphasicWithInterphaseDelay) {
         firstPhaseDurationLabel->setText(tr("First Phase Duration (D1):"));
@@ -773,15 +810,44 @@ void StimParamDialog::constrainRefractoryPeriod()
 // Private slot that constrains pulseTrainPeriod's lowest possible value to the sum of the durations of active phases.
 void StimParamDialog::constrainPulseTrainPeriod()
 {
-    double minimum;
+    pulseTrainPeriodSpinBox->setTrueMinimum(calculateWaveformDuration());
+}
+
+// Private method for calculating the total duration of the waveform.
+double StimParamDialog::calculateWaveformDuration()
+{
+    double waveformDuration;
     if (stimShapeComboBox->currentIndex() == Biphasic) {
-        minimum = firstPhaseDurationSpinBox->getTrueValue() + secondPhaseDurationSpinBox->getTrueValue();
+        waveformDuration = firstPhaseDurationSpinBox->getTrueValue() + secondPhaseDurationSpinBox->getTrueValue();
     } else if (stimShapeComboBox->currentIndex() == BiphasicWithInterphaseDelay) {
-        minimum = firstPhaseDurationSpinBox->getTrueValue() + secondPhaseDurationSpinBox->getTrueValue() + interphaseDelaySpinBox->getTrueValue();
+        waveformDuration = firstPhaseDurationSpinBox->getTrueValue() + secondPhaseDurationSpinBox->getTrueValue() + interphaseDelaySpinBox->getTrueValue();
     } else {
-        minimum = (2.0 * firstPhaseDurationSpinBox->getTrueValue()) + secondPhaseDurationSpinBox->getTrueValue();
+        waveformDuration = (2.0 * firstPhaseDurationSpinBox->getTrueValue()) + secondPhaseDurationSpinBox->getTrueValue();
     }
-    pulseTrainPeriodSpinBox->setTrueMinimum(minimum);
+    return waveformDuration;
+}
+
+// Private method for calculating the total duration of the single pulse.
+double StimParamDialog::calculateActualSinglePulseDuration()
+{
+    double totalPulseDuration = postTriggerDelaySpinBox->getTrueValue() + calculateWaveformDuration() + refractoryPeriodSpinBox->getTrueValue();
+    return totalPulseDuration;
+}
+
+// Private slot that calculates the actual single pulse duration and updates its label.
+void StimParamDialog::updateActualSinglePulseDuration()
+{
+    double totalPulseDuration = calculateActualSinglePulseDuration();
+
+    if (totalPulseDuration < 999)
+        actualSinglePulseDurationLabel->setText("Actual single pulse duration: " + QString::number(totalPulseDuration, 'f', 1) + " " + MicroSecondsSymbol);
+    else
+        actualSinglePulseDurationLabel->setText("Actual single pulse duration: " + QString::number(totalPulseDuration/1000, 'f', 3) + " ms");
+
+    if (totalPulseDuration <= maxPulseDuration)
+        actualSinglePulseDurationLabel->setStyleSheet("QLabel {}");
+    else
+        actualSinglePulseDurationLabel->setStyleSheet("QLabel {color: red}");
 }
 
 void StimParamDialog::roundTimeInputs()

@@ -1274,6 +1274,27 @@ void ControllerInterface::setStimSequenceParameters(Channel* ampChannel)
         eventChargeRecovOff = 0;
     }
 
+    // Warn if events have exceeded the max time.
+    if (eventStartStim > Never ||
+        eventStimPhase2 > Never ||
+        eventStimPhase3 > Never ||
+        eventEndStim > Never ||
+        eventRepeatStim > Never ||
+        eventEnd > Never ||
+        eventAmpSettleOn > Never ||
+        eventAmpSettleOff > Never ||
+        eventAmpSettleOnRepeat > Never ||
+        eventAmpSettleOffRepeat > Never ||
+        eventChargeRecovOn > Never ||
+        eventChargeRecovOff > Never)
+    {
+        QMessageBox::critical(nullptr, tr("Stimulation Pulse Duration Exceeds Hardware Limitation"),
+                                       tr("WARNING: The selected stimulation parameters define a pulse that is longer "
+                                          "than what the hardware can produce. If you do not reduce the pulse duration, "
+                                          "the hardware is likely to execute the wrong stimulation protocol!"),
+                                       QMessageBox::Ok);
+    }
+
     rhxController->programStimReg(stream, channel, AbstractRHXController::EventAmpSettleOn, eventAmpSettleOn);
     rhxController->programStimReg(stream, channel, AbstractRHXController::EventStartStim, eventStartStim);
     rhxController->programStimReg(stream, channel, AbstractRHXController::EventStimPhase2, eventStimPhase2);

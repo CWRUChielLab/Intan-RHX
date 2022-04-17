@@ -123,8 +123,16 @@ private:
     QLabel *postStimChargeRecovOffLabel;
     QCheckBox *enableChargeRecoveryCheckBox;
 
+    QGroupBox *singlePulseDurationGroupBox;
+    QLabel *maxSinglePulseDurationLabel;
+    QLabel *actualSinglePulseDurationLabel;
+
     double timestep;
     double currentstep;
+    double maxPulseDuration;
+
+    double calculateWaveformDuration();
+    double calculateActualSinglePulseDuration();
 
 private slots:
     void enableWidgets();
@@ -134,6 +142,7 @@ private slots:
     void constrainPostStimChargeRecovery();
     void constrainRefractoryPeriod();
     void constrainPulseTrainPeriod();
+    void updateActualSinglePulseDuration();
     void roundTimeInputs();
     void roundCurrentInputs();
 
