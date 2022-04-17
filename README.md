@@ -1,4 +1,9 @@
 # Intan-RHX
+
+NOTE: This software has been modified from the version provided by the
+manufacturer. See CHANGELOG.md for details. Notes for building can be found
+here: https://github.com/CWRUChielLab/Intan-RHX/wiki
+
 Intan RHX is free, powerful data acquisition software that displays and records electrophysiological signals from any Intan RHD or RHS system using an RHD USB interface board, RHD recording controller, or RHS stim/recording controller.
 
 The most recent binaries are available from the Intan website: https://intantech.com or here on GitHub under Releases:
@@ -35,4 +40,4 @@ libokFrontPanel.dylib should be in a directory called "Frameworks" alongside the
 
 ### Linux:
 
-A udev rules file should be added so that the Intan hardware can communicate via USB. The 60-opalkelly.rules file should be copied to /etc/udev/rules.d/, after which the system should be restarted or the command 'udevadm control --reload-rules' should be run. libokFrontPanel.so should be in the same directory as the binary executable at runtime. 
+A udev rules file should be added so that the Intan hardware can communicate via USB. The 60-opalkelly.rules file should be copied to /etc/udev/rules.d/, after which the system should be restarted or the command 'udevadm control --reload-rules' should be run. libokFrontPanel.so should be in the same directory as the binary executable at runtime.
